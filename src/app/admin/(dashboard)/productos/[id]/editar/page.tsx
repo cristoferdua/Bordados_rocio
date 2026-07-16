@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Loader2, Plus, X, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, X, Trash2, Upload } from "lucide-react";
 
 interface Category {
   id: number;
@@ -23,6 +23,13 @@ interface Product {
   images: { id: number; url: string; alt: string | null; isPrimary: boolean }[];
 }
 
+interface UploadedImage {
+  file?: File;
+  preview: string;
+  url: string;
+  isExisting: boolean;
+}
+
 export default function EditarProductoPage({
   params,
 }: {
@@ -30,10 +37,11 @@ export default function EditarProductoPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [imageUrls, setImageUrls] = useState<string[]>([""]);
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
@@ -61,10 +69,14 @@ export default function EditarProductoPage({
         categoryId: String(product.categoryId),
         isAvailable: product.isAvailable,
       });
-      setImageUrls(
+      setUploadedImages(
         product.images.length > 0
-          ? product.images.map((img) => img.url)
-          : [""]
+          ? product.images.map((img) => ({
+              url: img.url,
+              preview: img.url,
+              isExisting: true,
+            }))
+          : []
       );
       setIsLoading(false);
     });
@@ -81,18 +93,36 @@ export default function EditarProductoPage({
     setFormData({ ...formData, name, slug: generateSlug(name) });
   };
 
-  const addImageUrl = () => {
-    setImageUrls([...imageUrls, ""]);
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newImages: UploadedImage[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const preview = URL.createObjectURL(file);
+      newImages.push({
+        file,
+        preview,
+        url: "",
+        isExisting: false,
+      });
+    }
+
+    setUploadedImages([...uploadedImages, ...newImages]);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
-  const removeImageUrl = (index: number) => {
-    setImageUrls(imageUrls.filter((_, i) => i !== index));
-  };
-
-  const updateImageUrl = (index: number, value: string) => {
-    const newUrls = [...imageUrls];
-    newUrls[index] = value;
-    setImageUrls(newUrls);
+  const removeImage = (index: number) => {
+    const image = uploadedImages[index];
+    if (!image.isExisting) {
+      URL.revokeObjectURL(image.preview);
+    }
+    setUploadedImages(uploadedImages.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -100,6 +130,28 @@ export default function EditarProductoPage({
     setIsSubmitting(true);
 
     try {
+      // Upload new images and keep existing ones
+      const imageUrls: string[] = [];
+
+      for (const img of uploadedImages) {
+        if (img.isExisting) {
+          imageUrls.push(img.url);
+        } else if (img.file) {
+          const formDataImg = new FormData();
+          formDataImg.append("file", img.file);
+
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            body: formDataImg,
+          });
+
+          if (uploadRes.ok) {
+            const data = await uploadRes.json();
+            imageUrls.push(data.url);
+          }
+        }
+      }
+
       const res = await fetch(`/api/productos/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -111,7 +163,7 @@ export default function EditarProductoPage({
             : null,
           stock: parseInt(formData.stock),
           categoryId: parseInt(formData.categoryId),
-          images: imageUrls.filter((url) => url.trim() !== ""),
+          images: imageUrls,
         }),
       });
 
@@ -172,7 +224,7 @@ export default function EditarProductoPage({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Same form fields as new product */}
+        {/* Basic Info */}
         <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 space-y-6">
           <h2 className="font-playfair text-lg font-semibold text-gray-900">
             Información Básica
@@ -326,42 +378,70 @@ export default function EditarProductoPage({
           </div>
         </div>
 
-        {/* Images */}
+        {/* Images - File Upload */}
         <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-playfair text-lg font-semibold text-gray-900">
               Imágenes
             </h2>
-            <button
-              type="button"
-              onClick={addImageUrl}
-              className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50"
-            >
-              <Plus className="h-4 w-4" />
-              Agregar
-            </button>
           </div>
 
-          {imageUrls.map((url, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={url}
-                onChange={(e) => updateImageUrl(index, e.target.value)}
-                className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
-                placeholder="URL de la imagen"
-              />
-              {imageUrls.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeImageUrl(index)}
-                  className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
+          {/* Upload area */}
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-8 transition-colors hover:border-primary-300 hover:bg-primary-50/30"
+          >
+            <Upload className="h-8 w-8 text-gray-300" />
+            <p className="mt-3 text-sm font-medium text-gray-600">
+              Haz clic para agregar más imágenes
+            </p>
+            <p className="mt-1 text-xs text-gray-400">
+              JPG, PNG, WebP o GIF. Máximo 5MB cada una.
+            </p>
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            multiple
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+
+          {/* Image previews */}
+          {uploadedImages.length > 0 ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              {uploadedImages.map((img, index) => (
+                <div key={index} className="group relative overflow-hidden rounded-xl bg-gray-100">
+                  <div className="aspect-[3/4]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={img.preview}
+                      alt={`Imagen ${index + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-500"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  {index === 0 && (
+                    <span className="absolute bottom-2 left-2 rounded-full bg-primary-500/80 px-2 py-0.5 text-xs font-semibold text-white">
+                      Principal
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
+          ) : (
+            <p className="text-xs text-gray-400 text-center py-2">
+              No hay imágenes. Haz clic arriba para agregar.
+            </p>
+          )}
         </div>
 
         <div className="flex justify-end gap-4">
