@@ -18,6 +18,7 @@ import {
   Star,
   ChevronRight,
 } from "lucide-react";
+import { IncomeChart } from "@/components/admin/IncomeChart";
 
 export const dynamic = "force-dynamic";
 
@@ -362,6 +363,9 @@ export default async function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* === INCOME CHART === */}
+      <IncomeChart />
 
       {/* === MIDDLE ROW: Status Distribution + Top Products === */}
       <div className="grid gap-6 lg:grid-cols-2">
