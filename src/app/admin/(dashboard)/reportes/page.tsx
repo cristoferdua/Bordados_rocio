@@ -13,7 +13,7 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 // ─── Types ───────────────────────────────────────────
 
@@ -207,7 +207,7 @@ function generatePDF(
     }
   });
 
-  (doc as any).autoTable({
+  autoTable(doc, {
     startY: yOffset,
     head: [tableColumn],
     body: tableRows,
