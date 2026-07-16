@@ -3,6 +3,7 @@ import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { PublicFooter } from "@/components/public/PublicFooter";
+import { Providers } from "@/components/providers";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -33,9 +34,11 @@ export default function RootLayout({
       className={`${playfair.variable} ${inter.variable} h-full`}
     >
       <body className="h-full font-sans antialiased">
-        <PublicHeader />
-        <main className="min-h-[calc(100vh-4rem)]">{children}</main>
-        <PublicFooter />
+        <Providers>
+          <PublicHeader />
+          <main className="min-h-[calc(100vh-4rem)]">{children}</main>
+          <PublicFooter />
+        </Providers>
       </body>
     </html>
   );

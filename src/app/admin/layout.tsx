@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   Shirt,
@@ -13,6 +14,7 @@ import {
   X,
   ChevronRight,
   Home,
+  LogOut,
 } from "lucide-react";
 
 const sidebarLinks = [
@@ -49,6 +51,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -74,6 +77,25 @@ export default function AdminLayout({
             </p>
             <p className="text-xs text-gray-400">Bordados Rocio</p>
           </div>
+
+          {/* User info */}
+          {session?.user && (
+            <div className="border-b border-gray-100 bg-gradient-to-r from-primary-50/50 to-secondary-50/50 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-r from-primary-500 to-secondary-500 text-sm font-semibold text-white">
+                  {session.user.name?.charAt(0) || "A"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {session.user.name}
+                  </p>
+                  <p className="text-xs text-gray-400 truncate">
+                    {session.user.email}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <nav className="flex-1 space-y-1 p-4">
             {sidebarLinks.map((link) => {
@@ -103,7 +125,7 @@ export default function AdminLayout({
             })}
           </nav>
 
-          <div className="border-t border-gray-100 p-4">
+          <div className="border-t border-gray-100 p-4 space-y-2">
             <Link
               href="/"
               className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
@@ -111,6 +133,13 @@ export default function AdminLayout({
               <Home className="h-5 w-5 text-gray-400" />
               <span>Ver sitio web</span>
             </Link>
+            <button
+              onClick={() => signOut({ callbackUrl: "/admin/login" })}
+              className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-red-500 transition-colors hover:bg-red-50"
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Cerrar Sesión</span>
+            </button>
           </div>
         </div>
       </aside>
