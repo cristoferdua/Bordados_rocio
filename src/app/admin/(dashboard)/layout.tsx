@@ -16,6 +16,8 @@ import {
   Home,
   LogOut,
 } from "lucide-react";
+import { AdminNotifications } from "@/components/admin/AdminNotifications";
+import { NotificationBell } from "@/components/admin/NotificationBell";
 
 const sidebarLinks = [
   {
@@ -72,10 +74,17 @@ export default function AdminLayout({
       >
         <div className="flex h-full flex-col">
           <div className="border-b border-gray-100 p-6">
-            <p className="font-playfair text-lg font-bold text-primary-700">
-              Panel Admin
-            </p>
-            <p className="text-xs text-gray-400">Bordados Rocio</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-playfair text-lg font-bold text-primary-700">
+                  Panel Admin
+                </p>
+                <p className="text-xs text-gray-400">Bordados Rocio</p>
+              </div>
+              <div className="relative hidden lg:block">
+                <NotificationBell />
+              </div>
+            </div>
           </div>
 
           {/* User info */}
@@ -145,19 +154,27 @@ export default function AdminLayout({
       </aside>
 
       {/* Main content */}
-      <div className="flex-1">
+      <div className="flex-1 flex flex-col">
         {/* Mobile header */}
         <div className="sticky top-16 z-30 border-b border-gray-200 bg-white px-4 py-3 lg:hidden">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
-          >
-            <Menu className="h-5 w-5" />
-            <span>Menú Admin</span>
-          </button>
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+            >
+              <Menu className="h-5 w-5" />
+              <span>Menú Admin</span>
+            </button>
+            <div className="relative">
+              <NotificationBell />
+            </div>
+          </div>
         </div>
 
-        <div className="p-4 sm:p-6 lg:p-8">{children}</div>
+        <div className="p-4 sm:p-6 lg:p-8">
+          <AdminNotifications />
+          {children}
+        </div>
       </div>
     </div>
   );
