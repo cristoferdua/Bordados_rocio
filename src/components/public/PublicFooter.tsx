@@ -36,6 +36,7 @@ export function PublicFooter() {
                 { href: "/", label: "Inicio" },
                 { href: "/catalogo", label: "Catálogo" },
                 { href: "/cotizar", label: "Cotizar" },
+                { href: "/ubicacion", label: "Ubicación" },
                 { href: "/contacto", label: "Contacto" },
               ].map((link) => (
                 <li key={link.href}>
@@ -83,7 +84,9 @@ export function PublicFooter() {
             <ul className="space-y-3 text-sm text-gray-500">
               <li className="flex items-center gap-2">
                 <span>📍</span>
-                <span>Dirección: Centro, Tu Ciudad</span>
+                <Link href="/ubicacion" className="hover:text-primary-600">
+                  Dirección: Centro, Tu Ciudad
+                </Link>
               </li>
               <li className="flex items-center gap-2">
                 <span>📞</span>
