@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Home,
   LogOut,
+  FileText,
 } from "lucide-react";
 import { AdminNotifications } from "@/components/admin/AdminNotifications";
 import { NotificationBell } from "@/components/admin/NotificationBell";
@@ -44,6 +45,11 @@ const sidebarLinks = [
     href: "/admin/clientes",
     label: "Clientes",
     icon: Users,
+  },
+  {
+    href: "/admin/reportes",
+    label: "Reportes",
+    icon: FileText,
   },
 ];
 
