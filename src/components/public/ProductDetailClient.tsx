@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import Image from "next/image";
 
@@ -45,14 +45,75 @@ interface Props {
 }
 
 export function ProductDetailClient({ product, relatedProducts }: Props) {
-  const [currentImage, setCurrentImage] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [showShareToast, setShowShareToast] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const thumbnailRef = useRef<HTMLDivElement>(null);
 
-  const images = product.images.length > 0 
-    ? product.images 
+  const images = product.images.length > 0
+    ? product.images
     : [{ id: 0, url: "", alt: "Imagen no disponible", isPrimary: true }];
 
-  const currentImg = images[currentImage];
+  const currentImg = images[currentIndex];
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") goTo("prev");
+      if (e.key === "ArrowRight") goTo("next");
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [images.length]);
+
+  // Scroll thumbnail into view
+  useEffect(() => {
+    if (thumbnailRef.current && images.length > 1) {
+      const thumb = thumbnailRef.current.children[currentIndex] as HTMLElement;
+      if (thumb) {
+        thumb.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "center",
+        });
+      }
+    }
+  }, [currentIndex, images.length]);
+
+  const goTo = useCallback(
+    (dir: "prev" | "next") => {
+      if (isTransitioning) return;
+      setIsTransitioning(true);
+      setCurrentIndex((prev) => {
+        if (dir === "prev") return prev === 0 ? images.length - 1 : prev - 1;
+        return prev === images.length - 1 ? 0 : prev + 1;
+      });
+      setTimeout(() => setIsTransitioning(false), 400);
+    },
+    [images.length, isTransitioning]
+  );
+
+  const goToIndex = useCallback((idx: number) => {
+    if (idx === currentIndex) return;
+    setIsTransitioning(true);
+    setCurrentIndex(idx);
+    setTimeout(() => setIsTransitioning(false), 400);
+  }, [currentIndex]);
+
+  // Touch handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+    const diff = touchStart - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      goTo(diff > 0 ? "next" : "prev");
+    }
+    setTouchStart(null);
+  };
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -73,18 +134,11 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <nav className="mb-8 flex items-center gap-2 text-sm text-gray-400">
-          <Link href="/" className="hover:text-primary-600">
-            Inicio
-          </Link>
+          <Link href="/" className="hover:text-primary-600">Inicio</Link>
           <span>/</span>
-          <Link href="/catalogo" className="hover:text-primary-600">
-            Catálogo
-          </Link>
+          <Link href="/catalogo" className="hover:text-primary-600">Catálogo</Link>
           <span>/</span>
-          <Link
-            href={`/catalogo?categoria=${product.category.slug}`}
-            className="hover:text-primary-600"
-          >
+          <Link href={`/catalogo?categoria=${product.category.slug}`} className="hover:text-primary-600">
             {product.category.name}
           </Link>
           <span>/</span>
@@ -92,80 +146,122 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
         </nav>
 
         <div className="grid gap-12 lg:grid-cols-2">
-          {/* Image Gallery */}
+          {/* IMAGE CAROUSEL */}
           <div className="space-y-4">
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50 to-secondary-50">
-              <div className="relative flex h-[500px] items-center justify-center">
+            {/* Main image container */}
+            <div
+              className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 group select-none"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
+              {/* Image counter badge */}
+              {images.length > 1 && (
+                <div className="absolute top-4 left-4 z-10 rounded-full bg-black/50 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                  {currentIndex + 1} / {images.length}
+                </div>
+              )}
+
+              {/* Share button */}
+              <button
+                onClick={handleShare}
+                className="absolute right-4 top-4 z-10 rounded-full bg-white/80 p-2.5 text-gray-600 shadow-lg backdrop-blur-sm transition-all hover:bg-white hover:scale-110 active:scale-90"
+                aria-label="Compartir"
+              >
+                <Share2 size={18} />
+              </button>
+
+              {/* Image area */}
+              <div className="relative flex h-[450px] sm:h-[500px] items-center justify-center overflow-hidden">
                 {currentImg?.url ? (
-                  <Image
-                    src={currentImg.url}
-                    alt={currentImg.alt || product.name}
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                    className="object-cover"
-                    priority
-                  />
+                  <div className="absolute inset-0">
+                    <Image
+                      key={currentImg.id}
+                      src={currentImg.url}
+                      alt={currentImg.alt || product.name}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      className={`object-cover transition-all duration-500 ease-out ${
+                        isTransitioning ? "scale-105 opacity-0" : "scale-100 opacity-100"
+                      }`}
+                      priority={currentIndex === 0}
+                    />
+                  </div>
                 ) : (
                   <span className="text-8xl">👗</span>
                 )}
+
+                {/* Gradient overlay at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
               </div>
+
+              {/* Navigation arrows */}
               {images.length > 1 && (
                 <>
                   <button
-                    onClick={() =>
-                      setCurrentImage((prev) =>
-                        prev === 0 ? images.length - 1 : prev - 1
-                      )
-                    }
-                    className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-gray-600 shadow-lg backdrop-blur-sm transition-all hover:bg-white hover:scale-110"
+                    onClick={() => goTo("prev")}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-2.5 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:bg-white hover:scale-110 hover:shadow-xl active:scale-90 opacity-0 group-hover:opacity-100 sm:opacity-100"
+                    aria-label="Anterior"
                   >
                     <ChevronLeft size={20} />
                   </button>
                   <button
-                    onClick={() =>
-                      setCurrentImage((prev) =>
-                        prev === images.length - 1 ? 0 : prev + 1
-                      )
-                    }
-                    className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-gray-600 shadow-lg backdrop-blur-sm transition-all hover:bg-white hover:scale-110"
+                    onClick={() => goTo("next")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/90 p-2.5 text-gray-700 shadow-lg backdrop-blur-sm transition-all hover:bg-white hover:scale-110 hover:shadow-xl active:scale-90 opacity-0 group-hover:opacity-100 sm:opacity-100"
+                    aria-label="Siguiente"
                   >
                     <ChevronRight size={20} />
                   </button>
                 </>
               )}
-              <button
-                onClick={handleShare}
-                className="absolute right-4 top-4 rounded-full bg-white/80 p-2 text-gray-600 shadow-lg backdrop-blur-sm transition-all hover:bg-white hover:scale-110"
-              >
-                <Share2 size={18} />
-              </button>
             </div>
 
-            {/* Thumbnails */}
+            {/* Dots indicator (mobile) */}
             {images.length > 1 && (
-              <div className="flex gap-3 flex-wrap">
+              <div className="flex justify-center gap-2 sm:hidden">
+                {images.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => goToIndex(idx)}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      idx === currentIndex
+                        ? "w-6 bg-primary-500"
+                        : "w-2 bg-gray-300 hover:bg-gray-400"
+                    }`}
+                    aria-label={`Imagen ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Thumbnail strip */}
+            {images.length > 1 && (
+              <div
+                ref={thumbnailRef}
+                className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
+                style={{ scrollbarWidth: "thin", msOverflowStyle: "auto" }}
+              >
                 {images.map((img, idx) => (
                   <button
                     key={img.id}
-                    onClick={() => setCurrentImage(idx)}
-                    className={`relative overflow-hidden rounded-xl border-2 transition-all ${
-                      idx === currentImage
-                        ? "border-primary-500 ring-2 ring-primary-200"
-                        : "border-gray-200 hover:border-primary-300"
+                    onClick={() => goToIndex(idx)}
+                    className={`relative flex-shrink-0 overflow-hidden rounded-xl border-2 transition-all duration-200 ${
+                      idx === currentIndex
+                        ? "border-primary-500 ring-2 ring-primary-200 shadow-md"
+                        : "border-gray-200 hover:border-primary-300 hover:shadow-sm opacity-60 hover:opacity-100"
                     }`}
                   >
-                    <div className="relative h-16 w-16 bg-gradient-to-br from-primary-50 to-secondary-50">
+                    <div className="relative h-16 w-16 sm:h-20 sm:w-20 bg-gradient-to-br from-primary-50 to-secondary-50">
                       {img.url ? (
                         <Image
                           src={img.url}
                           alt={img.alt || product.name}
                           fill
-                          sizes="64px"
+                          sizes="80px"
                           className="object-cover"
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center">
-                          <span className="text-2xl">👗</span>
+                          <span className="text-xl">👗</span>
                         </div>
                       )}
                     </div>
@@ -175,7 +271,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
             )}
           </div>
 
-          {/* Product Info */}
+          {/* PRODUCT INFO */}
           <div className="space-y-6">
             <div>
               <span className="text-xs font-medium uppercase tracking-wider text-primary-500">
@@ -195,15 +291,12 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
 
             {product.depositPrice && (
               <p className="text-sm text-gray-500">
-                * Depósito de garantía: ${product.depositPrice.toFixed(2)}
-                (reembolsable)
+                * Depósito de garantía: ${product.depositPrice.toFixed(2)} (reembolsable)
               </p>
             )}
 
             <div className="border-t border-gray-100 pt-6">
-              <h3 className="font-playfair text-lg font-semibold text-gray-900">
-                Descripción
-              </h3>
+              <h3 className="font-playfair text-lg font-semibold text-gray-900">Descripción</h3>
               <p className="mt-2 leading-relaxed text-gray-600 whitespace-pre-line">
                 {product.description}
               </p>
@@ -240,7 +333,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
           </div>
         </div>
 
-        {/* Related Products */}
+        {/* RELATED PRODUCTS */}
         {relatedProducts.length > 0 && (
           <section className="mt-20">
             <h2 className="font-playfair text-2xl font-bold text-gray-900">
@@ -250,11 +343,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
               {relatedProducts.map((rp) => {
                 const rpImage = rp.images[0];
                 return (
-                  <Link
-                    key={rp.id}
-                    href={`/catalogo/${rp.slug}`}
-                    className="group"
-                  >
+                  <Link key={rp.id} href={`/catalogo/${rp.slug}`} className="group">
                     <div className="overflow-hidden rounded-xl bg-gray-50">
                       <div className="relative aspect-[3/4] bg-gradient-to-br from-primary-50 to-secondary-50">
                         {rpImage?.url ? (
@@ -267,9 +356,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center">
-                            <span className="text-5xl transition-transform duration-500 group-hover:scale-110">
-                              👗
-                            </span>
+                            <span className="text-5xl transition-transform duration-500 group-hover:scale-110">👗</span>
                           </div>
                         )}
                       </div>
@@ -277,9 +364,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
                     <h3 className="mt-3 font-playfair text-base font-semibold text-gray-900 group-hover:text-primary-600">
                       {rp.name}
                     </h3>
-                    <p className="text-sm text-gray-500">
-                      ${rp.rentalPrice.toFixed(2)}
-                    </p>
+                    <p className="text-sm text-gray-500">${rp.rentalPrice.toFixed(2)}</p>
                   </Link>
                 );
               })}
@@ -287,7 +372,7 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
           </section>
         )}
 
-        {/* Share Toast */}
+        {/* Share toast */}
         {showShareToast && (
           <div className="fixed bottom-8 right-8 rounded-xl bg-gray-900 px-6 py-3 text-sm text-white shadow-2xl animate-bounce">
             ¡Enlace copiado!
