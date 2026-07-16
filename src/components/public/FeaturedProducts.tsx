@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 
 export async function FeaturedProducts() {
@@ -37,40 +38,54 @@ export async function FeaturedProducts() {
         </div>
 
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          {products.map((product) => (
-            <Link
-              key={product.id}
-              href={`/catalogo/${product.slug}`}
-              className="group"
-            >
-              <div className="overflow-hidden rounded-2xl bg-gray-50">
-                <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-br from-primary-50 to-secondary-50">
-                  <div className="flex h-full items-center justify-center">
-                    <span className="text-6xl transition-transform duration-500 group-hover:scale-110">
-                      👗
-                    </span>
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                  <div className="absolute bottom-4 left-4 right-4 translate-y-4 opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100">
-                    <span className="inline-block rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-primary-600 backdrop-blur-sm">
-                      Ver detalle →
-                    </span>
+          {products.map((product) => {
+            const primaryImage = product.images[0];
+
+            return (
+              <Link
+                key={product.id}
+                href={`/catalogo/${product.slug}`}
+                className="group"
+              >
+                <div className="overflow-hidden rounded-2xl bg-gray-50">
+                  <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-br from-primary-50 to-secondary-50">
+                    {primaryImage ? (
+                      <Image
+                        src={primaryImage.url}
+                        alt={primaryImage.alt || product.name}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        className="object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <span className="text-6xl transition-transform duration-500 group-hover:scale-110">
+                          👗
+                        </span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                    <div className="absolute bottom-4 left-4 right-4 translate-y-4 opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100">
+                      <span className="inline-block rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-primary-600 backdrop-blur-sm">
+                        Ver detalle →
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="mt-4 space-y-1">
-                <span className="text-xs font-medium uppercase tracking-wider text-primary-500">
-                  {product.category.name}
-                </span>
-                <h3 className="font-playfair text-lg font-semibold text-gray-900 group-hover:text-primary-600">
-                  {product.name}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  Desde ${product.rentalPrice.toFixed(2)}
-                </p>
-              </div>
-            </Link>
-          ))}
+                <div className="mt-4 space-y-1">
+                  <span className="text-xs font-medium uppercase tracking-wider text-primary-500">
+                    {product.category.name}
+                  </span>
+                  <h3 className="font-playfair text-lg font-semibold text-gray-900 group-hover:text-primary-600">
+                    {product.name}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Desde ${product.rentalPrice.toFixed(2)}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
         </div>
 
         <div className="mt-8 text-center sm:hidden">

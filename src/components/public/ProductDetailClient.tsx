@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Share2 } from "lucide-react";
+import Image from "next/image";
 
 interface ProductImage {
   id: number;
@@ -51,6 +52,8 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
     ? product.images 
     : [{ id: 0, url: "", alt: "Imagen no disponible", isPrimary: true }];
 
+  const currentImg = images[currentImage];
+
   const handleShare = async () => {
     if (navigator.share) {
       await navigator.share({
@@ -92,8 +95,19 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
           {/* Image Gallery */}
           <div className="space-y-4">
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-50 to-secondary-50">
-              <div className="flex h-[500px] items-center justify-center">
-                <span className="text-8xl">👗</span>
+              <div className="relative flex h-[500px] items-center justify-center">
+                {currentImg?.url ? (
+                  <Image
+                    src={currentImg.url}
+                    alt={currentImg.alt || product.name}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="object-cover"
+                    priority
+                  />
+                ) : (
+                  <span className="text-8xl">👗</span>
+                )}
               </div>
               {images.length > 1 && (
                 <>
@@ -129,19 +143,31 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
 
             {/* Thumbnails */}
             {images.length > 1 && (
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
                 {images.map((img, idx) => (
                   <button
                     key={img.id}
                     onClick={() => setCurrentImage(idx)}
-                    className={`overflow-hidden rounded-xl border-2 transition-all ${
+                    className={`relative overflow-hidden rounded-xl border-2 transition-all ${
                       idx === currentImage
                         ? "border-primary-500 ring-2 ring-primary-200"
                         : "border-gray-200 hover:border-primary-300"
                     }`}
                   >
-                    <div className="flex h-16 w-16 items-center justify-center bg-gradient-to-br from-primary-50 to-secondary-50">
-                      <span className="text-2xl">👗</span>
+                    <div className="relative h-16 w-16 bg-gradient-to-br from-primary-50 to-secondary-50">
+                      {img.url ? (
+                        <Image
+                          src={img.url}
+                          alt={img.alt || product.name}
+                          fill
+                          sizes="64px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <span className="text-2xl">👗</span>
+                        </div>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -221,27 +247,42 @@ export function ProductDetailClient({ product, relatedProducts }: Props) {
               También te puede gustar
             </h2>
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {relatedProducts.map((rp) => (
-                <Link
-                  key={rp.id}
-                  href={`/catalogo/${rp.slug}`}
-                  className="group"
-                >
-                  <div className="overflow-hidden rounded-xl bg-gray-50">
-                    <div className="flex aspect-[3/4] items-center justify-center bg-gradient-to-br from-primary-50 to-secondary-50">
-                      <span className="text-5xl transition-transform duration-500 group-hover:scale-110">
-                        👗
-                      </span>
+              {relatedProducts.map((rp) => {
+                const rpImage = rp.images[0];
+                return (
+                  <Link
+                    key={rp.id}
+                    href={`/catalogo/${rp.slug}`}
+                    className="group"
+                  >
+                    <div className="overflow-hidden rounded-xl bg-gray-50">
+                      <div className="relative aspect-[3/4] bg-gradient-to-br from-primary-50 to-secondary-50">
+                        {rpImage?.url ? (
+                          <Image
+                            src={rpImage.url}
+                            alt={rpImage.alt || rp.name}
+                            fill
+                            sizes="(max-width: 640px) 100vw, 25vw"
+                            className="object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center">
+                            <span className="text-5xl transition-transform duration-500 group-hover:scale-110">
+                              👗
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <h3 className="mt-3 font-playfair text-base font-semibold text-gray-900 group-hover:text-primary-600">
-                    {rp.name}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    ${rp.rentalPrice.toFixed(2)}
-                  </p>
-                </Link>
-              ))}
+                    <h3 className="mt-3 font-playfair text-base font-semibold text-gray-900 group-hover:text-primary-600">
+                      {rp.name}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      ${rp.rentalPrice.toFixed(2)}
+                    </p>
+                  </Link>
+                );
+              })}
             </div>
           </section>
         )}
