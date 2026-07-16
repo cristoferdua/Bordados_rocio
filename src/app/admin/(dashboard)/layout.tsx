@@ -16,6 +16,7 @@ import {
   Home,
   LogOut,
   FileText,
+  CalendarDays,
 } from "lucide-react";
 import { AdminNotifications } from "@/components/admin/AdminNotifications";
 import { NotificationBell } from "@/components/admin/NotificationBell";
@@ -50,6 +51,11 @@ const sidebarLinks = [
     href: "/admin/reportes",
     label: "Reportes",
     icon: FileText,
+  },
+  {
+    href: "/admin/calendario",
+    label: "Calendario",
+    icon: CalendarDays,
   },
 ];
 
