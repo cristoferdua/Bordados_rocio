@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSession, signOut } from "next-auth/react";
 import {
   LayoutDashboard,
@@ -17,46 +17,25 @@ import {
   LogOut,
   FileText,
   CalendarDays,
+  Shield,
 } from "lucide-react";
 import { AdminNotifications } from "@/components/admin/AdminNotifications";
 import { NotificationBell } from "@/components/admin/NotificationBell";
+import {
+  hasPermission,
+  roleLabel,
+  roleBadgeColor,
+} from "@/lib/permissions";
 
-const sidebarLinks = [
-  {
-    href: "/admin",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    href: "/admin/productos",
-    label: "Productos",
-    icon: Shirt,
-  },
-  {
-    href: "/admin/categorias",
-    label: "Categorías",
-    icon: Tags,
-  },
-  {
-    href: "/admin/alquileres",
-    label: "Alquileres",
-    icon: CalendarCheck,
-  },
-  {
-    href: "/admin/clientes",
-    label: "Clientes",
-    icon: Users,
-  },
-  {
-    href: "/admin/reportes",
-    label: "Reportes",
-    icon: FileText,
-  },
-  {
-    href: "/admin/calendario",
-    label: "Calendario",
-    icon: CalendarDays,
-  },
+const allLinks = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, permission: null as string | null },
+  { href: "/admin/productos", label: "Productos", icon: Shirt, permission: "products:read" as const },
+  { href: "/admin/categorias", label: "Categorías", icon: Tags, permission: "categories:read" as const },
+  { href: "/admin/alquileres", label: "Alquileres", icon: CalendarCheck, permission: "rentals:read" as const },
+  { href: "/admin/clientes", label: "Clientes", icon: Users, permission: "customers:read" as const },
+  { href: "/admin/reportes", label: "Reportes", icon: FileText, permission: "reports:read" as const },
+  { href: "/admin/calendario", label: "Calendario", icon: CalendarDays, permission: "rentals:read" as const },
+  { href: "/admin/usuarios", label: "Usuarios", icon: Shield, permission: "users:read" as const },
 ];
 
 export default function AdminLayout({
@@ -67,6 +46,16 @@ export default function AdminLayout({
   const pathname = usePathname();
   const { data: session } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const userRole = (session?.user as any)?.role;
+
+  // Filter links by role permissions
+  const sidebarLinks = useMemo(() => {
+    return allLinks.filter((link) => {
+      if (!link.permission) return true; // Dashboard always visible
+      return hasPermission(userRole, link.permission as any);
+    });
+  }, [userRole]);
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] bg-gray-50">
@@ -113,6 +102,10 @@ export default function AdminLayout({
                   <p className="text-xs text-gray-400 truncate">
                     {session.user.email}
                   </p>
+                  {/* Role badge */}
+                  <span className={`inline-block mt-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ${roleBadgeColor(userRole)}`}>
+                    {roleLabel(userRole)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -121,6 +114,7 @@ export default function AdminLayout({
           <nav className="flex-1 space-y-1 p-4">
             {sidebarLinks.map((link) => {
               const isActive = pathname === link.href;
+              const Icon = link.icon;
               return (
                 <Link
                   key={link.href}
@@ -132,7 +126,7 @@ export default function AdminLayout({
                       : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
                   }`}
                 >
-                  <link.icon
+                  <Icon
                     className={`h-5 w-5 ${
                       isActive ? "text-primary-500" : "text-gray-400"
                     }`}

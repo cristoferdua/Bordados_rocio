@@ -1,15 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-
-// Admin credentials (in production, use a database)
-// You can change these after first login
-const ADMIN_USER = {
-  name: "Administrador",
-  email: "admin@bordadosrocio.com",
-  // Default password: admin123
-  passwordHash: bcrypt.hashSync("admin123", 10),
-};
+import { prisma } from "@/lib/prisma";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -27,18 +19,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           password: string;
         };
 
-        if (
-          email === ADMIN_USER.email &&
-          bcrypt.compareSync(password, ADMIN_USER.passwordHash)
-        ) {
-          return {
-            id: "1",
-            name: ADMIN_USER.name,
-            email: ADMIN_USER.email,
-          };
-        }
+        const user = await prisma.user.findUnique({
+          where: { email },
+        });
 
-        return null;
+        if (!user) return null;
+
+        const isValid = bcrypt.compareSync(password, user.password);
+        if (!isValid) return null;
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          image: user.image,
+        };
       },
     }),
   ],
@@ -49,12 +45,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.role = (user as any).role || "viewer";
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        (session.user as any).role = token.role || "viewer";
       }
       return session;
     },
