@@ -12,6 +12,8 @@ import {
   Loader2,
   FileSpreadsheet,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 // ─── Types ───────────────────────────────────────────
 
@@ -77,15 +79,12 @@ function getStatusBadge(status: string) {
 
 // ─── PDF Generator ───────────────────────────────────
 
-async function generatePDF(
+function generatePDF(
   type: ReportType,
   data: any[],
   summary: any,
   dateRange: string
 ) {
-  const { default: jsPDF } = await import("jspdf");
-  await import("jspdf-autotable");
-
   const doc = new jsPDF("landscape", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -382,13 +381,13 @@ export default function ReportesPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     setExporting("pdf");
     try {
       const dateRange = fromDate || toDate
         ? `${fromDate ? formatDate(fromDate) : ""} - ${toDate ? formatDate(toDate) : "hoy"}`
         : "";
-      await generatePDF(activeTab, data, summary, dateRange);
+      generatePDF(activeTab, data, summary, dateRange);
     } finally {
       setExporting(null);
     }
